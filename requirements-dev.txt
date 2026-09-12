@@ -19,3 +19,8 @@ ipykernel==6.29.5
 matplotlib==3.10.1
 seaborn==0.13.2
 umap-learn==0.5.7
+
+# ── Evaluation ───────────────────────────────────────────────────────
+ragas>=0.2.15
+datasets>=3.5.0
+langchain-huggingface==0.1.2
