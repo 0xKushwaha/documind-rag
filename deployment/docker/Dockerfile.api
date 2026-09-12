@@ -16,11 +16,16 @@ FROM python:3.11-slim AS runtime
 
 WORKDIR /app
 
+# curl needed by HEALTHCHECK
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # Copy only the installed packages from builder
 COPY --from=builder /install /usr/local
 
-# Copy application source
+# Copy application source and migrations
 COPY src/ ./src/
+COPY alembic/ ./alembic/
+COPY alembic.ini ./alembic.ini
 COPY .env.example .env.example
 
 # Create non-root user for security
@@ -31,8 +36,10 @@ USER documind
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", \
-     "--workers", "2", "--no-reload"]
+# Run migrations then start the server.
+# PORT is injected by Koyeb / Cloud Run / Render — defaults to 8000.
+# Single worker keeps RSS well within the 512 MB free-tier ceiling.
+CMD ["sh", "-c", "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --no-reload"]
